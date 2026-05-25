@@ -4,7 +4,7 @@
 
 #include <string.h>
 #include <tonc.h>
-//#include "block_sprite.h"
+#include "block.h"
 
 OBJ_ATTR obj_buffer[128];
 OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
@@ -34,13 +34,24 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define NUM_ROWS 30
 #define NUM_PIECES 1
 #define MAX_BLOCKS 32 // FIXME
-#define BLOCK_GAP_WddIDTH 0
 
 #define BLOCK_TILE_OFFSET 0
 
 BG_POINT bg0_pt= { 0, 0 };
 SCR_ENTRY *bg0_map= se_mem[SBB_0];
 
+
+// World block
+typedef struct {
+    // block position
+    u8 x; // init to 120
+    u8 y;
+
+    u8 tid;
+
+} block_t;
+
+// TODO get rid of me
 const TILE tiles[5] =
 {
     {{0x00000000,
@@ -142,163 +153,7 @@ void wait_any_key(void) {
     }
 }
 
-// TODO DFS on piece map to only touch live piece
-// returns collision state
-//u8 copy_piece_to_board_state(u8 piece_idx, u8 block_idx_x, u8 block_idx_y, u8 pal_offset) {
-//    volatile u8 collision_found = 0;
-//    for (int i = 0; i < piece_library[piece_idx].y_len; i++) {
-//        for (int j = 0; j < piece_library[piece_idx].x_len; j++) {
-//            board_state[block_idx_y+i][block_idx_x+j] = board_state[block_idx_y+i][block_idx_x+j] + (piece_library[piece_idx].map[i][j] << pal_offset);
-//            if (board_state[block_idx_y+i][block_idx_x+j] > 4) {
-//                collision_found = 1;
-//            }
-//        }
-//    }
-//    return collision_found;
-//}
 
-// TODO DFS on piece map to only touch live piece
-//void remove_piece_from_board_state(u8 piece_idx, u8 block_idx_x, u8 block_idx_y, u8 pal_offset) {
-//    for (int i = 0; i < piece_library[piece_idx].y_len; i++) {
-//        for (int j = 0; j < piece_library[piece_idx].x_len; j++) {
-//            if (board_state[block_idx_y+i][block_idx_x+j] > 0) {
-//                board_state[block_idx_y+i][block_idx_x+j] = board_state[block_idx_y+i][block_idx_x+j] - (piece_library[piece_idx].map[i][j] << pal_offset);
-//            }
-//        }
-//    }
-//}
-
-//u8 square_check(u8 x, u8 y) {
-//    // Find which squares the live piece touches
-//    // could theoretically be 4 ):
-//    // maybe check the topl and if that clears then check the other 3?
-//    // TODO handle botr
-//
-//    volatile u8 valid_structure = 1;
-//
-//    // Find the corner of the square to check
-//    volatile u8 x_square = (x > 8) ? 6 : (3 * (x / 3));
-//    volatile u8 y_square = (y > 8) ? 6 : (3 * (y / 3));
-//
-//    for (int i = 0; i < 3; i++) {
-//        for (int j = 0; j < 3; j++) {
-//            if (board_state[y_square+j][x_square+i] == 0) {
-//                valid_structure = 0;
-//                break;
-//            }
-//        }
-//    }
-//    return valid_structure;
-//}
-
-//void square_clear(u8 x, u8 y) {
-//    // Find the corner of the square to check
-//    volatile u8 x_square = (x > 8) ? 6 : (3 * (x / 3));
-//    volatile u8 y_square = (y > 8) ? 6 : (3 * (y / 3));
-//
-//    for (int i = 0; i < 3; i++) {
-//        for (int j = 0; j < 3; j++) {
-//            board_state[y_square+j][x_square+i] = 0;
-//        }
-//    }
-//}
-
-// TODO optimize to only run live piece shape, not n^2
-// Checks for vertical 9, horizontal 9, or square 9
-// Check east west for each Y in the shape
-// Check north south for each X in the shape
-// returns points scored
-//u8 find_complete_block_structure(u8 piece_idx, u8 block_idx_x, u8 block_idx_y) {
-//    u8 valid_structure = 1;
-//    u8 total_clears = 0; // TODO use me
-//
-//    // East West for each Y in live piece
-//    for (int i = 0; i < MAX_DIM; i++) {
-//        for (int j = 0; j < NUM_ROWS; j++) {
-//            if (board_state[block_idx_y+i][j] == 0) {
-//                valid_structure = 0;
-//                break;
-//            }
-//        }
-//        if (valid_structure == 1) {
-//            // Tag row for removal
-//            board_state[block_idx_y+i][0] = 20;
-//        }
-//        valid_structure = 1;
-//    }
-//    valid_structure = 1;
-//    // North South for each X in live piece
-//    for (int i = 0; i < MAX_DIM; i++) {
-//        for (int j = 0; j < NUM_COLS; j++) {
-//            if (board_state[j][block_idx_x+i] == 0) {
-//                valid_structure = 0;
-//                break;
-//            }
-//        }
-//        if (valid_structure == 1) {
-//            // Have to create different tag in top left corner where you can have both
-//            // horizontal and vertical clears starting from the same block
-//            board_state[0][block_idx_x+i] = (board_state[0][block_idx_x+i] == 20)? 22:21;
-//        }
-//        valid_structure = 1;
-//    }
-//
-//    // Square detect
-//    volatile u8 squares_state = 0;
-//    squares_state |= square_check(block_idx_x + piece_library[piece_idx].x_len, block_idx_y + piece_library[piece_idx].y_len);
-//    squares_state <<= 1;
-//    squares_state |= square_check(block_idx_x, block_idx_y + piece_library[piece_idx].y_len);
-//    squares_state <<= 1;
-//    squares_state |= square_check(block_idx_x + piece_library[piece_idx].x_len, block_idx_y);
-//    squares_state <<= 1;
-//    squares_state |=  square_check(block_idx_x, block_idx_y);
-//
-//    // Vertical removal
-//    for (int i = 0; i < NUM_COLS; i++) {
-//        if (board_state[0][i] == 21) { // FIXME handle collision
-//            for (int j = 0; j < NUM_ROWS; j++) {
-//                board_state[j][i] = 0;
-//            }
-//        }
-//        // Both horizontal and vertical
-//        else if (board_state[0][i] == 22) {
-//            for (int j = 0; j < NUM_ROWS; j++) {
-//                board_state[j][i] = 0;
-//            }
-//            board_state[0][i] = 20; // put tag back for horizontal
-//        }
-//    }
-//    
-//    // Horizontal removal
-//    for (int i = 0; i < NUM_ROWS; i++) {
-//        if (board_state[i][0] == 20) {
-//            for (int j = 0; j < NUM_COLS; j++) {
-//                board_state[i][j] = 0;
-//            }
-//        }
-//    }
-//
-//
-//    // Square removal
-//    if (squares_state & 0x01) {
-//        square_clear(block_idx_x, block_idx_y);
-//    }
-//    if (squares_state & 0x02) {
-//        square_clear(block_idx_x + piece_library[piece_idx].x_len, block_idx_y);
-//    }
-//    if (squares_state & 0x04) {
-//        square_clear(block_idx_x, block_idx_y + piece_library[piece_idx].y_len);
-//    }
-//    if (squares_state & 0x04) {
-//        square_clear(block_idx_x + piece_library[piece_idx].x_len, block_idx_y + piece_library[piece_idx].y_len);
-//    }
-//
-//
-//
-//    // TODO save all clears and remove block at the end
-//
-//    return 0;
-//}
 
 //void render_blocks(void) {
 //    OBJ_ATTR *block_obj;
@@ -346,43 +201,6 @@ void wait_any_key(void) {
 //    }
 //}
 
-void demo_animation(void) {
-    u8 piece_idx = 0;
-    u8 pal_bank  = 0;
-    while(1) {
-        vid_vsync();
-        key_poll();
-        if (key_hit(KEY_SELECT)) {
-            break; // Break out of waiting loop and restart
-        }
-
-        //remove_piece_from_board_state(piece_idx, 4, 4, 0);
-
-        if (key_hit(KEY_RIGHT) && (piece_idx < NUM_PIECES-1)) {
-            piece_idx++;
-        }
-        if (key_hit(KEY_LEFT) && (piece_idx > 0)) {
-            piece_idx--;
-        }
-        if (key_hit(KEY_UP)) {
-            pal_bank++;
-            for (int i = 0; i < MAX_BLOCKS; i++) {
-                obj_buffer[i].attr2 = ATTR2_BUILD(BLOCK_TILE_OFFSET, pal_bank, 0);
-            }
-        }
-        if (key_hit(KEY_DOWN)) {
-            pal_bank--;
-            for (int i = 0; i < MAX_BLOCKS; i++) {
-                obj_buffer[i].attr2 = ATTR2_BUILD(BLOCK_TILE_OFFSET, pal_bank, 0);
-            }
-        }
-        
-        //copy_piece_to_board_state(piece_idx, 4, 4, 0);
-
-        //render_blocks();
-        oam_copy(oam_mem, obj_buffer,  MAX_BLOCKS /* + other things??? TODO */);
-    }
-}
 
 void init_bg() {
     // Initialize background 0
@@ -410,6 +228,7 @@ void init_bg() {
 }
 
 void sprite_loop() {
+    // Initialize the blocks
     OBJ_ATTR *block_obj;
     for (int i = 0; i < MAX_BLOCKS; i++) {
         block_obj = &obj_buffer[i];
@@ -417,6 +236,7 @@ void sprite_loop() {
             ATTR0_SQUARE | ATTR0_HIDE,
             ATTR1_SIZE_16x16,
             ATTR2_PALBANK(0) | BLOCK_TILE_OFFSET);
+        // TODO Fix the XY.  X iterate across the screen, y const initially
         obj_set_pos(block_obj, (i/NUM_COLS)*BLOCK_HEIGHT, (i%NUM_ROWS)*BLOCK_WIDTH);
     }
 
@@ -508,14 +328,14 @@ int main() {
         // Places the glyphs of a 4bpp Mr. Envelope
         //   into LOW obj memory (cbb == 4)
         // TODO copy block
-        // FIXME
-        //memcpy32(&tile_mem[4][0], block_spriteTiles, block_spriteTilesLen / sizeof(u32));
-        //memcpy16(pal_obj_mem, block_spritePal, block_spritePalLen / sizeof(u16));
+        // FIXME copy new black sprite
+        memcpy32(&tile_mem[4][0], block_tiles, block_tiles_len / sizeof(u32));
+        memcpy16(pal_obj_mem, block_pal, block_pal_len / sizeof(u16));
         oam_init(obj_buffer, 128);
         REG_DISPCNT= DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
-        init_bg(); // FIXME create basic BG
-        //sprite_loop();
+        //init_bg(); // FIXME get rid of this BG
+        sprite_loop();
 
         // Waiting for new commands
         while(1) {
