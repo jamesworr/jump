@@ -5,6 +5,8 @@
 #include <string.h>
 #include <tonc.h>
 #include "block.h"
+#include "man.h"
+#include "left_house.h"
 
 OBJ_ATTR obj_buffer[128];
 OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
@@ -27,15 +29,15 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define GRID_BR_G  0x52
 #define BLANK_BG   0x04
 
-#define BLOCK_WIDTH  16
-#define BLOCK_HEIGHT 16
+#define BLOCK_WIDTH  8
+#define BLOCK_HEIGHT 8
 
 #define NUM_COLS 30
 #define NUM_ROWS 30
 #define NUM_PIECES 1
-#define MAX_BLOCKS 32 // FIXME
+#define MAX_BLOCKS 8 // FIXME
 
-#define BLOCK_TILE_OFFSET 0
+#define BLOCK_TILE_OFFSET 6
 
 BG_POINT bg0_pt= { 0, 0 };
 SCR_ENTRY *bg0_map= se_mem[SBB_0];
@@ -52,78 +54,6 @@ typedef struct {
 } block_t;
 
 // TODO get rid of me
-const TILE tiles[5] =
-{
-    {{0x00000000,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110}},
-
-    {{0x00000000,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111}},
-
-    {{0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x01111111,
-      0x00000000}},
-
-    {{0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x11111110,
-      0x00000000}},
-
-    {{0x11111111,
-      0x11111111,
-      0x11111111,
-      0x11111111,
-      0x11111111,
-      0x11111111,
-      0x11111111,
-      0x11111111}},
-
-};
-
-const SCR_ENTRY my_map[20][32] = {
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_G,GRID_TR_G,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,GRID_TL_W,GRID_TR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_G,GRID_BR_G,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,GRID_BL_W,GRID_BR_W,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-    {BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG,BLANK_BG},
-};
-
 volatile u8 board_state[NUM_COLS][NUM_ROWS] = {
     {0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0},
@@ -204,50 +134,40 @@ void wait_any_key(void) {
 
 void init_bg() {
     // Initialize background 0
-    REG_BG0CNT = BG_CBB(CBB_0) | BG_SBB(SBB_0) | BG_REG_32x32;
-    REG_BG0HOFS = 0;
-    REG_BG0VOFS = 0;
+    //REG_BG0CNT = BG_CBB(CBB_0) | BG_SBB(SBB_0) | BG_REG_32x32;
+    //REG_BG0HOFS = 0;
+    //REG_BG0VOFS = 0;
+    // TODO make background with PIG
 
-    tile_mem[CBB_0][0] = tiles[0];
-    tile_mem[CBB_0][1] = tiles[1];
-    tile_mem[CBB_0][2] = tiles[2];
-    tile_mem[CBB_0][3] = tiles[3];
+    // Copy background tiles
+	// Load palette
+	memcpy16(pal_bg_mem, left_house_pal, left_house_pal_len / sizeof(u16));
+	// Load tiles into CBB 0
+	memcpy32(&tile_mem[0][0], left_house_tiles, left_house_tiles_len / sizeof(u32));
+	// Load map into SBB 30
+	memcpy32(&se_mem[30][0], left_house_map, left_house_map_len / sizeof(u32));
 
-    // Create the palette
-    pal_bg_bank[0][1] = RGB15(31,  0,  0);
-    pal_bg_bank[1][1] = RGB15( 0, 31,  0);
-    pal_bg_bank[2][1] = RGB15( 0,  0, 31);
-    pal_bg_bank[3][1] = RGB15(16, 16, 16);
-    pal_bg_bank[4][1] = RGB15( 0,  0,  0);
-    pal_bg_bank[5][1] = RGB15(31, 31, 31);
-
-    SCR_ENTRY *pse = bg0_map;
-    for(int jj=0; jj<32*20; jj++) {
-        *pse++ = SE_PALBANK((my_map[jj/32][jj%32] & 0xF0)>>4) | SE_ID(my_map[jj/32][jj%32] & 0x0F);
-    }
+    // Setup background and display registers
+    REG_BG0CNT  = BG_CBB(0) | BG_SBB(30) | BG_8BPP | BG_REG_64x64;
+    REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 }
 
 void sprite_loop() {
-    // Initialize the blocks
     OBJ_ATTR *block_obj;
-    for (int i = 0; i < MAX_BLOCKS; i++) {
-        block_obj = &obj_buffer[i];
-        obj_set_attr(block_obj,
-            ATTR0_SQUARE | ATTR0_HIDE,
-            ATTR1_SIZE_16x16,
-            ATTR2_PALBANK(0) | BLOCK_TILE_OFFSET);
-        // TODO Fix the XY.  X iterate across the screen, y const initially
-        obj_set_pos(block_obj, (i/NUM_COLS)*BLOCK_HEIGHT, (i%NUM_ROWS)*BLOCK_WIDTH);
-    }
-
-    // TODO remove demo
-    //demo_animation();
-    
-    // Copy initial piece to board
-    //copy_piece_to_board_state(live_piece_idx, live_piece_x, live_piece_y, 1);
+    // Initialize the person
+    // TODO move into separate init function
+    block_obj = &obj_buffer[0];
+    obj_set_attr(block_obj,
+        ATTR0_TALL | ATTR0_8BPP,
+        ATTR1_SIZE_8x16,
+        ATTR2_PALBANK(0) | 0);
+    obj_set_pos(block_obj, 100, 120);
 
     volatile int frame_counter = 0;
     volatile u8 collision = 0;
+    volatile u16 bg_horz = 100;
+    volatile u16 bg_vert = 100;
+
     while(1) {
         vid_vsync();
         key_poll();
@@ -255,51 +175,25 @@ void sprite_loop() {
             break; // Break out of waiting loop and restart
         }
         // Game Loop
-        // move live piece or swap live piece
-        // check collisons
-        // Can place?
-        // Does legal placement clear any blocks? (vertical, horizontal, square)
-
-
         // Check collision
+        // TODO
 
-        // Check for "place" command
-        // Double copy on placement to leave blocks in the game state
-        // Check for no collision
-        // Generate new live piece
-        if ((key_hit(KEY_A)) && (collision == 0)) {
-            // reduce live state from 4 to "placed" 2
-            //remove_piece_from_board_state(live_piece_idx, live_piece_x, live_piece_y, 0);
-
-            // TODO check for cleared blocks
-            //find_complete_block_structure(live_piece_idx, live_piece_x, live_piece_y);
-            live_piece_idx = qran_range(0, NUM_PIECES-1);
-
-            // FIXME just temporary until I implement botr
-            //while (piece_library[live_piece_idx].topl_botr) {
-            //    live_piece_idx = qran_range(0, NUM_PIECES-1);
-            //}
-
-            live_piece_x   = 0;
-            live_piece_y   = 0;
+        // FIXME test control for map scrolling
+        if (key_is_down(KEY_UP) && (bg_vert > 0)) {
+            bg_vert--;
         }
-        else {
-            //remove_piece_from_board_state(live_piece_idx, live_piece_x, live_piece_y, 1);
+        if (key_is_down(KEY_DOWN) && (bg_vert < 352)) {
+            bg_vert++;
         }
-        
-        // FIXME redo the bounds checking to account for different piece shapes
-        //if (key_hit(KEY_UP) && (live_piece_y > 0)) {
-        //    live_piece_y--;
-        //}
-        //if (key_hit(KEY_DOWN) && (live_piece_y < (NUM_ROWS - piece_library[live_piece_idx].y_len))) {
-        //    live_piece_y++;
-        //}
-        //if (key_hit(KEY_LEFT) && (live_piece_x > 0)) {
-        //    live_piece_x--;
-        //}
-        //if (key_hit(KEY_RIGHT) && (live_piece_x < (NUM_ROWS - piece_library[live_piece_idx].x_len))) {
-        //    live_piece_x++;
-        //}
+        if (key_is_down(KEY_LEFT) && (bg_horz > 0)) {
+            bg_horz--;
+        }
+        if (key_is_down(KEY_RIGHT) && (bg_horz < 272)) {
+            bg_horz++;
+        }
+
+        REG_BG0HOFS = bg_horz;
+        REG_BG0VOFS = bg_vert;
 
         //collision = copy_piece_to_board_state(live_piece_idx, live_piece_x, live_piece_y, 1);
         // TODO update colors of live piece placement
@@ -327,14 +221,15 @@ int main() {
         // Setup for tiled mode
         // Places the glyphs of a 4bpp Mr. Envelope
         //   into LOW obj memory (cbb == 4)
-        // TODO copy block
-        // FIXME copy new black sprite
-        memcpy32(&tile_mem[4][0], block_tiles, block_tiles_len / sizeof(u32));
-        memcpy16(pal_obj_mem, block_pal, block_pal_len / sizeof(u16));
+        // TODO need to either merge palettes
+        // or have PIG generate separate palettes
+        memcpy32(&tile_mem[4][0], man_tiles, man_tiles_len / sizeof(u32));
+        memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
+
         oam_init(obj_buffer, 128);
         REG_DISPCNT= DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
-        //init_bg(); // FIXME get rid of this BG
+        init_bg(); // FIXME get rid of this BG
         sprite_loop();
 
         // Waiting for new commands
