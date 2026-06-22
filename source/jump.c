@@ -13,8 +13,57 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define CBB_0  0
 #define SBB_0 28
 
-BG_POINT bg0_pt= { 0, 0 };
-SCR_ENTRY *bg0_map= se_mem[SBB_0];
+#define BG_SCROLL_X_LOWER 0
+#define BG_SCROLL_X_UPPER 352
+#define BG_SCROLL_Y_LOWER 0
+#define BG_SCROLL_Y_UPPER 272
+
+#define PLAYER_HEIGHT 16
+#define PLAYER_WIDTH   8
+
+// player object
+typedef struct {
+    // absolute position within the current map
+    u16 x;
+    u16 y;
+
+    // relative position within the screen
+    // needed for movement on edges when
+    // background scrolling runs out
+    // normally centered (120, 80)
+    u8 screen_x;
+    u8 screen_y;
+
+    // Tile ID for sprite animation
+    u8 tid;
+
+} player_t;
+
+// Returns wall collision status
+// 0x01: right
+// 0x02: left
+// 0x04: up
+// 0x08: down
+u8 check_player_wall_collision(player_t* player) {
+    // TODO
+    // need to pass current map somehow
+    // need to account for the weird 64x64 tile vram layout
+
+    // quantize player location into 8x8 BG tiles
+    u8 upper_tile_x = (player->x) >> 3;
+    u8 upper_tile_y = (player->y) >> 3;
+    u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
+    u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
+    return 0;
+}
+
+void update_player_position(player_t* player) {
+    // TODO write movement update function that 
+    // either scrolls the BG when possible or moves sprite on edges
+}
+
+//BG_POINT bg0_pt= { 0, 0 };
+//SCR_ENTRY *bg0_map= se_mem[SBB_0];
 
 void wait_any_key(void) {
     while(1) {
@@ -62,16 +111,16 @@ void sprite_loop() {
         // TODO
 
         // FIXME test control for map scrolling
-        if (key_is_down(KEY_UP) && (bg_vert > 0)) {
+        if (key_is_down(KEY_UP)    && (bg_vert > BG_SCROLL_X_LOWER)) {
             bg_vert--;
         }
-        if (key_is_down(KEY_DOWN) && (bg_vert < 352)) {
+        if (key_is_down(KEY_DOWN)  && (bg_vert < BG_SCROLL_X_UPPER)) {
             bg_vert++;
         }
-        if (key_is_down(KEY_LEFT) && (bg_horz > 0)) {
+        if (key_is_down(KEY_LEFT)  && (bg_horz > BG_SCROLL_Y_LOWER)) {
             bg_horz--;
         }
-        if (key_is_down(KEY_RIGHT) && (bg_horz < 272)) {
+        if (key_is_down(KEY_RIGHT) && (bg_horz < BG_SCROLL_Y_UPPER)) {
             bg_horz++;
         }
 
