@@ -18,6 +18,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define BG_SCROLL_Y_LOWER 0
 #define BG_SCROLL_Y_UPPER 272
 
+#define CENTER_X 120
+#define CENTER_Y 80
+
 #define PLAYER_HEIGHT 16
 #define PLAYER_WIDTH   8
 
@@ -33,6 +36,10 @@ typedef struct {
     // normally centered (120, 80)
     u8 screen_x;
     u8 screen_y;
+
+    // Tracks background scrolling location
+    u16 bg_horz;
+    u16 bg_vert;
 
     // Tile ID for sprite animation
     u8 tid;
@@ -54,6 +61,10 @@ u8 check_player_wall_collision(player_t* player) {
     u8 upper_tile_y = (player->y) >> 3;
     u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
     u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
+
+    // TODO figure out the offsets with the weird 64x64 tile vram layout
+    volatile u16 tile_value = left_house_map[0];
+    volatile u16 tile_value2 = left_house_map[0]; // TODO delete me placeholder for breakpoint
     return 0;
 }
 
@@ -81,7 +92,7 @@ void init_bg() {
 	memcpy16(pal_bg_mem, left_house_pal, left_house_pal_len / sizeof(u16));
 	// Load tiles into CBB 0
 	memcpy32(&tile_mem[0][0], left_house_tiles, left_house_tiles_len / sizeof(u32));
-	// Load map into SBB 30
+	// Load map into SBB 8
 	memcpy32(&se_mem[8][0], left_house_map, left_house_map_len / sizeof(u32));
 
     // TODO copy center and right
@@ -92,13 +103,11 @@ void init_bg() {
     REG_BG0CNT  = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
 }
 
-void sprite_loop() {
+void sprite_loop(player_t* player) {
     OBJ_ATTR *block_obj;
 
     volatile int frame_counter = 0;
     volatile u8 collision = 0;
-    volatile u16 bg_horz = 100;
-    volatile u16 bg_vert = 100;
 
     while(1) {
         vid_vsync();
@@ -110,23 +119,41 @@ void sprite_loop() {
         // Check collision
         // TODO
 
-        // FIXME test control for map scrolling
-        if (key_is_down(KEY_UP)    && (bg_vert > BG_SCROLL_X_LOWER)) {
-            bg_vert--;
+        check_player_wall_collision(player);
+
+        // TODO need to walk player back to the center once you come back from the edge
+        if (key_is_down(KEY_UP) && (player->bg_vert > BG_SCROLL_X_LOWER)) {
+            player->bg_vert--;
         }
-        if (key_is_down(KEY_DOWN)  && (bg_vert < BG_SCROLL_X_UPPER)) {
-            bg_vert++;
-        }
-        if (key_is_down(KEY_LEFT)  && (bg_horz > BG_SCROLL_Y_LOWER)) {
-            bg_horz--;
-        }
-        if (key_is_down(KEY_RIGHT) && (bg_horz < BG_SCROLL_Y_UPPER)) {
-            bg_horz++;
+        else if (key_is_down(KEY_UP) && (player->bg_vert <= BG_SCROLL_X_LOWER)) {
+            player->screen_y--;
         }
 
-        REG_BG0HOFS = bg_horz;
-        REG_BG0VOFS = bg_vert;
+        if (key_is_down(KEY_DOWN) && (player->bg_vert < BG_SCROLL_X_UPPER)) {
+            player->bg_vert++;
+        }
+        else if (key_is_down(KEY_DOWN) && (player->bg_vert >= BG_SCROLL_X_UPPER)) {
+            player->screen_y++;
+        }
 
+        if (key_is_down(KEY_LEFT) && (player->bg_horz > BG_SCROLL_Y_LOWER)) {
+            player->bg_horz--;
+        }
+        else if (key_is_down(KEY_LEFT) && (player->bg_horz <= BG_SCROLL_Y_LOWER)) {
+            player->screen_x--;
+        }
+
+        if (key_is_down(KEY_RIGHT) && (player->bg_horz < BG_SCROLL_Y_UPPER)) {
+            player->bg_horz++;
+        }
+        if (key_is_down(KEY_RIGHT) && (player->bg_horz >= BG_SCROLL_Y_UPPER)) {
+            player->screen_x++;
+        }
+
+        REG_BG0HOFS = player->bg_horz;
+        REG_BG0VOFS = player->bg_vert;
+
+        obj_set_pos(&obj_buffer[0], player->screen_x, player->screen_y);
         oam_copy(oam_mem, obj_buffer, 1);
         frame_counter++;
     }
@@ -134,6 +161,18 @@ void sprite_loop() {
 
 int main() {
     while(1) {
+        // Init player struct
+        // TODO have init locations per room
+        volatile player_t player = {
+            .x = 256,
+            .y = 256,
+            .screen_x = CENTER_X,
+            .screen_y = CENTER_Y,
+            .bg_horz = 256,
+            .bg_vert = 256,
+            .tid = 0
+        };
+
         //opening_sequence();
         init_bg();
 
@@ -149,11 +188,12 @@ int main() {
             ATTR0_TALL | ATTR0_8BPP,
             ATTR1_SIZE_8x16,
             ATTR2_PALBANK(0) | 0);
-        obj_set_pos(&obj_buffer[0], 100, 120);
+        obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
+        //obj_set_pos(&obj_buffer[0], 100, 100);
 
         REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
-        sprite_loop();
+        sprite_loop(&player);
 
         // Waiting for new commands
         while(1) {
