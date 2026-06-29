@@ -18,6 +18,17 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define BG_SCROLL_Y_LOWER 0
 #define BG_SCROLL_Y_UPPER 272
 
+// 512 px map / 2 = 256
+// 240 px screen / 2 = 120
+// 8 px wide sprite / 2 = 4
+// 256 - 120 - 4 = 132
+#define BG_START_COORD_X 132
+// 512 px map / 2 = 256
+// 160 px screen / 2 = 80
+// 16 px high sprite / 2 = 8
+// 256 - 80 - 8 = 168
+#define BG_START_COORD_Y 168
+
 #define CENTER_X 120
 #define CENTER_Y 80
 
@@ -53,7 +64,6 @@ typedef struct {
 // 0x08: down
 u8 check_player_wall_collision(player_t* player) {
     // TODO
-    // need to pass current map somehow
     // need to account for the weird 64x64 tile vram layout
 
     // quantize player location into 8x8 BG tiles
@@ -64,7 +74,9 @@ u8 check_player_wall_collision(player_t* player) {
 
     // TODO figure out the offsets with the weird 64x64 tile vram layout
     volatile u16 tile_value = left_house_map[0];
-    volatile u16 tile_value2 = left_house_map[0]; // TODO delete me placeholder for breakpoint
+    volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
+    volatile u16 tile_value2 = left_house_map[tile_map_offset];
+    volatile u16 tile_value3 = left_house_map[0]; // TODO delete me placeholder for breakpoint
     return 0;
 }
 
@@ -121,33 +133,45 @@ void sprite_loop(player_t* player) {
 
         check_player_wall_collision(player);
 
-        // TODO need to walk player back to the center once you come back from the edge
-        if (key_is_down(KEY_UP) && (player->bg_vert > BG_SCROLL_X_LOWER)) {
-            player->bg_vert--;
-        }
-        else if (key_is_down(KEY_UP) && (player->bg_vert <= BG_SCROLL_X_LOWER)) {
+        // TODO fix off by one issue when changing direction
+        // Moving up
+        if (key_is_down(KEY_UP) && ((player->bg_vert <= BG_SCROLL_X_LOWER) || (player->screen_y >= CENTER_Y))) {
             player->screen_y--;
+            player->y--;
+        }
+        else if (key_is_down(KEY_UP) && (player->bg_vert >= BG_SCROLL_X_LOWER)) {
+            player->bg_vert--;
+            player->y--;
         }
 
-        if (key_is_down(KEY_DOWN) && (player->bg_vert < BG_SCROLL_X_UPPER)) {
-            player->bg_vert++;
-        }
-        else if (key_is_down(KEY_DOWN) && (player->bg_vert >= BG_SCROLL_X_UPPER)) {
+        // Moving down
+        if (key_is_down(KEY_DOWN) && ((player->bg_vert >= BG_SCROLL_X_UPPER) || (player->screen_y <= CENTER_Y))) {
             player->screen_y++;
+            player->y++;
+        }
+        else if (key_is_down(KEY_DOWN) && (player->bg_vert <= BG_SCROLL_X_UPPER)) {
+            player->bg_vert++;
+            player->y++;
         }
 
-        if (key_is_down(KEY_LEFT) && (player->bg_horz > BG_SCROLL_Y_LOWER)) {
-            player->bg_horz--;
-        }
-        else if (key_is_down(KEY_LEFT) && (player->bg_horz <= BG_SCROLL_Y_LOWER)) {
+        // Moving left
+        if (key_is_down(KEY_LEFT) && ((player->bg_horz <= BG_SCROLL_Y_LOWER) || (player->screen_x >= CENTER_X))) {
             player->screen_x--;
+            player->x--;
+        }
+        else if (key_is_down(KEY_LEFT) && (player->bg_horz >= BG_SCROLL_Y_LOWER)) {
+            player->bg_horz--;
+            player->x--;
         }
 
-        if (key_is_down(KEY_RIGHT) && (player->bg_horz < BG_SCROLL_Y_UPPER)) {
-            player->bg_horz++;
-        }
-        if (key_is_down(KEY_RIGHT) && (player->bg_horz >= BG_SCROLL_Y_UPPER)) {
+        // Moving right
+        if (key_is_down(KEY_RIGHT) && ((player->bg_horz >= BG_SCROLL_Y_UPPER) || (player->screen_x <= CENTER_X))) {
             player->screen_x++;
+            player->x++;
+        }
+        else if (key_is_down(KEY_RIGHT) && (player->bg_horz <= BG_SCROLL_Y_UPPER)) {
+            player->bg_horz++;
+            player->x++;
         }
 
         REG_BG0HOFS = player->bg_horz;
@@ -168,8 +192,8 @@ int main() {
             .y = 256,
             .screen_x = CENTER_X,
             .screen_y = CENTER_Y,
-            .bg_horz = 256,
-            .bg_vert = 256,
+            .bg_horz = BG_START_COORD_X,
+            .bg_vert = BG_START_COORD_Y,
             .tid = 0
         };
 
