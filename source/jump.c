@@ -27,7 +27,7 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 // 160 px screen / 2 = 80
 // 16 px high sprite / 2 = 8
 // 256 - 80 - 8 = 168
-#define BG_START_COORD_Y 168
+#define BG_START_COORD_Y 172
 
 #define CENTER_X 120
 #define CENTER_Y 80
@@ -65,6 +65,7 @@ typedef struct {
 u8 check_player_wall_collision(player_t* player) {
     // TODO
     // need to account for the weird 64x64 tile vram layout
+    // OR just be lazy and have PIG generate a collision map
 
     // quantize player location into 8x8 BG tiles
     u8 upper_tile_x = (player->x) >> 3;
@@ -73,10 +74,10 @@ u8 check_player_wall_collision(player_t* player) {
     u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
 
     // TODO figure out the offsets with the weird 64x64 tile vram layout
-    volatile u16 tile_value = left_house_map[0];
+    volatile u16 tile_value = left_house_collision_map[0];
     volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
-    volatile u16 tile_value2 = left_house_map[tile_map_offset];
-    volatile u16 tile_value3 = left_house_map[0]; // TODO delete me placeholder for breakpoint
+    volatile u16 tile_value2 = left_house_collision_map[tile_map_offset];
+    volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
     return 0;
 }
 
