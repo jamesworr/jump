@@ -35,6 +35,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define PLAYER_HEIGHT 16
 #define PLAYER_WIDTH   8
 
+// Collision stuff
+#define WALL_TID 0
+
 // player object
 typedef struct {
     // absolute position within the current map
@@ -74,11 +77,16 @@ u8 check_player_wall_collision(player_t* player) {
     u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
 
     // TODO figure out the offsets with the weird 64x64 tile vram layout
-    volatile u16 tile_value = left_house_collision_map[0];
     volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
-    volatile u16 tile_value2 = left_house_collision_map[tile_map_offset];
+    volatile u16 tile_value = left_house_collision_map[tile_map_offset];
     volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
-    return 0;
+
+    if (tile_value == WALL_TID) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 void update_player_position(player_t* player) {
@@ -139,40 +147,88 @@ void sprite_loop(player_t* player) {
         if (key_is_down(KEY_UP) && ((player->bg_vert <= BG_SCROLL_X_LOWER) || (player->screen_y >= CENTER_Y))) {
             player->screen_y--;
             player->y--;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->screen_y++;
+                player->y++;
+            }
         }
         else if (key_is_down(KEY_UP) && (player->bg_vert >= BG_SCROLL_X_LOWER)) {
             player->bg_vert--;
             player->y--;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->bg_vert++;
+                player->y++;
+            }
         }
 
         // Moving down
         if (key_is_down(KEY_DOWN) && ((player->bg_vert >= BG_SCROLL_X_UPPER) || (player->screen_y <= CENTER_Y))) {
             player->screen_y++;
             player->y++;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->screen_y--;
+                player->y--;
+            }
         }
         else if (key_is_down(KEY_DOWN) && (player->bg_vert <= BG_SCROLL_X_UPPER)) {
             player->bg_vert++;
             player->y++;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->bg_vert--;
+                player->y--;
+            }
         }
 
         // Moving left
         if (key_is_down(KEY_LEFT) && ((player->bg_horz <= BG_SCROLL_Y_LOWER) || (player->screen_x >= CENTER_X))) {
             player->screen_x--;
             player->x--;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->screen_x++;
+                player->x++;
+            }
         }
         else if (key_is_down(KEY_LEFT) && (player->bg_horz >= BG_SCROLL_Y_LOWER)) {
             player->bg_horz--;
             player->x--;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->bg_horz++;
+                player->x++;
+            }
         }
 
         // Moving right
         if (key_is_down(KEY_RIGHT) && ((player->bg_horz >= BG_SCROLL_Y_UPPER) || (player->screen_x <= CENTER_X))) {
             player->screen_x++;
             player->x++;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->screen_x--;
+                player->x--;
+            }
         }
         else if (key_is_down(KEY_RIGHT) && (player->bg_horz <= BG_SCROLL_Y_UPPER)) {
             player->bg_horz++;
             player->x++;
+            // Check collison on new move TODO find better way
+            if (check_player_wall_collision(player) == 1) {
+                // revert
+                player->bg_horz--;
+                player->x--;
+            }
         }
 
         REG_BG0HOFS = player->bg_horz;
