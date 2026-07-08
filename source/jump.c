@@ -6,6 +6,7 @@
 #include <tonc.h>
 #include "man.h"
 #include "left_house.h"
+#include "scorpion.h"
 
 OBJ_ATTR obj_buffer[128];
 OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
@@ -34,6 +35,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 
 #define PLAYER_HEIGHT 16
 #define PLAYER_WIDTH   8
+#define PLAYER_TID     0
+
+#define SCORPION_TID 4
 
 // Collision stuff
 #define WALL_TID 0
@@ -235,7 +239,7 @@ void sprite_loop(player_t* player) {
         REG_BG0VOFS = player->bg_vert;
 
         obj_set_pos(&obj_buffer[0], player->screen_x, player->screen_y);
-        oam_copy(oam_mem, obj_buffer, 1);
+        oam_copy(oam_mem, obj_buffer, 2);
         frame_counter++;
     }
 }
@@ -257,20 +261,33 @@ int main() {
         //opening_sequence();
         init_bg();
 
-        // Initialize the person
         // TODO move into separate init function
         //oam_init(obj_buffer, 128);
         oam_init(obj_buffer, 128);
 
+        // Copy sprite tiles
         memcpy32(&tile_mem[4][0], man_tiles, man_tiles_len / sizeof(u32));
+        memcpy32(&tile_mem[4][4], scorpion_tiles, scorpion_tiles_len / sizeof(u32));
+
+        // Copy shared sprite palette
         memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
 
+        // Initialize the person
         obj_set_attr(&obj_buffer[0],
             ATTR0_TALL | ATTR0_8BPP,
             ATTR1_SIZE_8x16,
-            ATTR2_PALBANK(0) | 0);
+            ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
         //obj_set_pos(&obj_buffer[0], 100, 100);
+
+        // Initialize the scorpion
+        // TODO make this a loop for multiple
+        obj_set_attr(&obj_buffer[1],
+            ATTR0_TALL | ATTR0_8BPP,
+            ATTR1_SIZE_16x32,
+            ATTR2_PALBANK(0) | SCORPION_TID);
+        //obj_set_pos(&obj_buffer[1], player.screen_x, player.screen_y);
+        obj_set_pos(&obj_buffer[1], 100, 100);
 
         REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
