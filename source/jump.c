@@ -48,6 +48,7 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 // Collision stuff
 #define WALL_TID 0
 
+void set_scorpion_visibility(u8 visible);
 // player object
 typedef struct {
     // absolute position within the current map
@@ -205,10 +206,30 @@ void update_player_position(player_t* player) {
         }
     }
 
+    // TODO delete me
+    if (key_hit(KEY_A)) {
+        set_scorpion_visibility(1);
+    }
+    if (key_hit(KEY_B)) {
+        set_scorpion_visibility(0);
+    }
+
+
     REG_BG0HOFS = player->bg_horz;
     REG_BG0VOFS = player->bg_vert;
 
     obj_set_pos(&obj_buffer[0], player->screen_x, player->screen_y);
+}
+
+void set_scorpion_visibility(u8 visible) {
+    // TODO add pointer inside scorpion struct to the
+    // OAM object buffer so this is reusable
+    if (visible == 1) {
+        obj_buffer[1].attr0 = obj_buffer[0].attr0 & 0xFCFF;
+    }
+    else {
+        obj_buffer[1].attr0 = obj_buffer[0].attr0 | ATTR0_HIDE;
+    }
 }
 
 void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
@@ -222,22 +243,73 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // c = x min screen
     // d = x max screen
 
+    volatile u8 x_overlap = 0;
+    volatile u8 y_overlap = 0;
     // Check early bail out scenarios first
     // A > D
     if (scorpion->x > (player->bg_horz + SCREEN_WIDTH)) {
-        // TODO set invisible
+        set_scorpion_visibility(0);
         return;
+    }
+    else if (scorpion->x >= player->bg_horz) {
+        // Check actual overlap
+        // A >= C
+        x_overlap = 1;
     }
     // B < C
-    if ((scorpion->x + SCORPION_WIDTH) < player->bg_horz) {
-        // TODO set invisible
+    // TODO need to refactor the bail out logic but Im way too lazy and tired
+    if (x_overlap == 0) {
+        if ((scorpion->x + SCORPION_WIDTH) < player->bg_horz) {
+            set_scorpion_visibility(0);
+            return;
+        }
+        else { 
+            // Check actual overlap
+            // B <= D
+            if ((scorpion->x + SCORPION_WIDTH) <= (player->bg_horz + SCREEN_WIDTH)) {
+                x_overlap = 1;
+            }
+        }
+    }
+    if (x_overlap == 0) {
+        set_scorpion_visibility(0);
         return;
     }
 
-    // Check actual overlap
-    // A >= C
+    // Vertical
+    // Check early bail out scenarios first
+    // A > D
+    if (scorpion->y > (player->bg_horz + SCREEN_HEIGHT)) {
+        set_scorpion_visibility(0);
+        return;
+    }
+    else if (scorpion->y >= player->bg_horz) {
+        // Check actual overlap
+        // A >= C
+        y_overlap = 1;
+    }
+    // B < C
+    // TODO need to refactor the bail out logic but Im way too lazy and tired
+    if (y_overlap == 0) {
+        if ((scorpion->y + SCORPION_HEIGHT) < player->bg_horz) {
+            set_scorpion_visibility(0);
+            return;
+        }
+        else { 
+            // Check actual overlap
+            // B <= D
+            if ((scorpion->y + SCORPION_HEIGHT) <= (player->bg_horz + SCREEN_HEIGHT)) {
+                y_overlap = 1;
+            }
+        }
+    }
+    if (y_overlap == 0) {
+        set_scorpion_visibility(0);
+        return;
+    }
 
-    // B <= D
+    set_scorpion_visibility(1);
+
 }
 
 //BG_POINT bg0_pt= { 0, 0 };
