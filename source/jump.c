@@ -232,7 +232,7 @@ void set_scorpion_visibility(u8 visible) {
     }
 }
 
-void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
+u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // basically need to check collision of the bg scroll area
     // with the outline of the scorpion. If "collision" then
     // we enable scopion visibility and give it a valid screen_x/y
@@ -249,7 +249,7 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // A > D
     if (scorpion->x > (player->bg_horz + SCREEN_WIDTH)) {
         set_scorpion_visibility(0);
-        return;
+        return 0;
     }
     else if (scorpion->x >= player->bg_horz) {
         // Check actual overlap
@@ -261,7 +261,7 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     if (x_overlap == 0) {
         if ((scorpion->x + SCORPION_WIDTH) < player->bg_horz) {
             set_scorpion_visibility(0);
-            return;
+            return 0;
         }
         else { 
             // Check actual overlap
@@ -273,7 +273,7 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     }
     if (x_overlap == 0) {
         set_scorpion_visibility(0);
-        return;
+        return 0;
     }
 
     // Vertical
@@ -281,7 +281,7 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // A > D
     if (scorpion->y > (player->bg_horz + SCREEN_HEIGHT)) {
         set_scorpion_visibility(0);
-        return;
+        return 0;
     }
     else if (scorpion->y >= player->bg_horz) {
         // Check actual overlap
@@ -293,7 +293,7 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     if (y_overlap == 0) {
         if ((scorpion->y + SCORPION_HEIGHT) < player->bg_horz) {
             set_scorpion_visibility(0);
-            return;
+            return 0;
         }
         else { 
             // Check actual overlap
@@ -305,11 +305,21 @@ void check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     }
     if (y_overlap == 0) {
         set_scorpion_visibility(0);
-        return;
+        return 0;
     }
 
     set_scorpion_visibility(1);
+    return 1;
+}
 
+void update_scorpion_position(player_t* player, scorpion_t* scorpion) {
+    volatile short scorpion_offset_x = scorpion->x - player->x;
+    volatile short scorpion_offset_y = scorpion->y - player->y;
+
+    volatile short scorpion_screen_x = player->screen_x + scorpion_offset_x;
+    volatile short scorpion_screen_y = player->screen_y + scorpion_offset_y;
+
+    obj_set_pos(&obj_buffer[1], scorpion_screen_x, scorpion_screen_y);
 }
 
 //BG_POINT bg0_pt= { 0, 0 };
@@ -342,7 +352,7 @@ void init_bg() {
     REG_BG0CNT  = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
 }
 
-void sprite_loop(player_t* player) {
+void sprite_loop(player_t* player, scorpion_t* scorpion) {
     OBJ_ATTR *block_obj;
 
     volatile int frame_counter = 0;
@@ -357,8 +367,11 @@ void sprite_loop(player_t* player) {
         // Game Loop
         // Check collision
         // TODO
-
         check_player_wall_collision(player);
+
+        if (check_scorpion_visible(player, scorpion)) {
+            update_scorpion_position(player, scorpion);
+        }
 
         // TODO fix off by one issue when changing direction
         update_player_position(player);
@@ -418,12 +431,13 @@ int main() {
             ATTR0_TALL | ATTR0_8BPP,
             ATTR1_SIZE_16x32,
             ATTR2_PALBANK(0) | SCORPION_TID);
-        //obj_set_pos(&obj_buffer[1], player.screen_x, player.screen_y);
-        obj_set_pos(&obj_buffer[1], 100, 100);
+        obj_set_pos(&obj_buffer[1], scorpion.screen_x,scorpion.screen_y);
+        set_scorpion_visibility(0);
+        //obj_set_pos(&obj_buffer[1], 100, 100);
 
         REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
-        sprite_loop(&player);
+        sprite_loop(&player, &scorpion);
 
         // Waiting for new commands
         while(1) {
