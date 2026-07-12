@@ -6,6 +6,7 @@
 #include <tonc.h>
 #include "man.h"
 #include "left_house.h"
+#include "center_house.h"
 #include "scorpion.h"
 
 OBJ_ATTR obj_buffer[128];
@@ -106,7 +107,8 @@ u8 check_player_wall_collision(player_t* player) {
 
     // TODO figure out the offsets with the weird 64x64 tile vram layout
     volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
-    volatile u16 tile_value = left_house_collision_map[tile_map_offset];
+    //volatile u16 tile_value = left_house_collision_map[tile_map_offset];
+    volatile u16 tile_value = center_house_collision_map[tile_map_offset];
     volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
 
     if (tile_value == WALL_TID) {
@@ -337,19 +339,22 @@ void wait_any_key(void) {
 
 void init_bg() {
     // Copy background tiles
-	// Load palette
+	// Load shared palette
 	memcpy16(pal_bg_mem, left_house_pal, left_house_pal_len / sizeof(u16));
-	// Load tiles into CBB 0
+	// Load shared tiles into CBB 0
 	memcpy32(&tile_mem[0][0], left_house_tiles, left_house_tiles_len / sizeof(u32));
-	// Load map into SBB 8
+	// Load left map into SBB 8
 	memcpy32(&se_mem[8][0], left_house_map, left_house_map_len / sizeof(u32));
+	// Load center map into SBB 12
+	memcpy32(&se_mem[12][0], center_house_map, center_house_map_len / sizeof(u32));
 
     // TODO copy center and right
     // TODO see if we can fit all 3 BG maps into separate SBB
     // but keep common tileset
 
     // Setup background and display registers
-    REG_BG0CNT  = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
+    // REG_BG0CNT = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64; FIXME
+    REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
 }
 
 void sprite_loop(player_t* player, scorpion_t* scorpion) {
