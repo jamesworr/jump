@@ -7,6 +7,7 @@
 #include "man.h"
 #include "left_house.h"
 #include "center_house.h"
+#include "right_house.h"
 #include "scorpion.h"
 
 OBJ_ATTR obj_buffer[128];
@@ -66,6 +67,11 @@ typedef struct {
     // Tracks background scrolling location
     u16 bg_horz;
     u16 bg_vert;
+
+    // 0: left
+    // 1: center
+    // 2: right
+    u8 current_map;
 
     // Tile ID for sprite animation
     u8 tid;
@@ -347,6 +353,8 @@ void init_bg() {
 	memcpy32(&se_mem[8][0], left_house_map, left_house_map_len / sizeof(u32));
 	// Load center map into SBB 12
 	memcpy32(&se_mem[12][0], center_house_map, center_house_map_len / sizeof(u32));
+	// Load right map into SBB 16
+	memcpy32(&se_mem[16][0], right_house_map, right_house_map_len / sizeof(u32));
 
     // TODO copy center and right
     // TODO see if we can fit all 3 BG maps into separate SBB
@@ -397,6 +405,7 @@ int main() {
             .screen_y = CENTER_Y,
             .bg_horz = BG_START_COORD_X,
             .bg_vert = BG_START_COORD_Y,
+            .current_map = 1,
             .tid = PLAYER_TID
         };
 
