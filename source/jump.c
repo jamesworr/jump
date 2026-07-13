@@ -43,6 +43,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define PLAYER_WIDTH   8
 #define PLAYER_TID     0
 
+#define PLAYER_SWITCH_MAP_LEFT    8
+#define PLAYER_SWITCH_MAP_RIGHT 505
+
 #define SCORPION_HEIGHT 32
 #define SCORPION_WIDTH  16
 #define SCORPION_TID     4
@@ -111,17 +114,72 @@ u8 check_player_wall_collision(player_t* player) {
     u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
     u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
 
-    // TODO figure out the offsets with the weird 64x64 tile vram layout
     volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
     //volatile u16 tile_value = left_house_collision_map[tile_map_offset];
-    volatile u16 tile_value = center_house_collision_map[tile_map_offset];
+    //volatile u16 tile_value = center_house_collision_map[tile_map_offset];
+
+    // TODO store pointer to current collision map in player struct
+    // so we don't have to use the switch every time
+    volatile u16 tile_value;
+    switch (player->current_map) {
+        case 0:
+            tile_value = left_house_collision_map[tile_map_offset];
+            break;
+        case 1:
+            tile_value = center_house_collision_map[tile_map_offset];
+            break;
+        case 2:
+            tile_value = right_house_collision_map[tile_map_offset];
+            break;
+    }
     volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
 
+    // TODO also need to check the 2nd tile
     if (tile_value == WALL_TID) {
         return 1;
     }
     else {
         return 0;
+    }
+}
+
+void swap_player_map(player_t* player, u8 new_map, u8 new_x, u8 new_y, u8 new_screen_x, u8 new_screen_y, u8 new_bg_horz, u8 new_bg_vert) {
+    player->current_map = new_map;
+    player->x = new_x;
+    player->y = new_y;
+    player->screen_x = new_screen_x;
+    player->screen_y = new_screen_y;
+    player->bg_horz = new_bg_horz;
+    player->bg_vert = new_bg_vert;
+}
+
+// FIXME move the bg control reg update into swap_player_map
+void check_player_map_swap(player_t* player) {
+    if (player->x < PLAYER_SWITCH_MAP_LEFT) {
+        if (player->current_map == 1) {
+            // center moving to left
+            swap_player_map(player, 0, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            REG_BG0CNT = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
+        }
+        else {
+            // implied player->current_map == 2
+            // right moving to center
+            swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
+        }
+    }
+    else if (player->x > PLAYER_SWITCH_MAP_RIGHT) {
+        if (player->current_map == 0) {
+            // left moving to center
+            swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
+        }
+        else {
+            // implied player->current_map == 1
+            // center moving to right
+            swap_player_map(player, 2, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            REG_BG0CNT = BG_CBB(0) | BG_SBB(16) | BG_8BPP | BG_REG_64x64;
+        }
     }
 }
 
@@ -214,14 +272,7 @@ void update_player_position(player_t* player) {
         }
     }
 
-    // TODO delete me
-    if (key_hit(KEY_A)) {
-        set_scorpion_visibility(1);
-    }
-    if (key_hit(KEY_B)) {
-        set_scorpion_visibility(0);
-    }
-
+    check_player_map_swap(player);
 
     REG_BG0HOFS = player->bg_horz;
     REG_BG0VOFS = player->bg_vert;
