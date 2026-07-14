@@ -158,26 +158,26 @@ void check_player_map_swap(player_t* player) {
     if (player->x < PLAYER_SWITCH_MAP_LEFT) {
         if (player->current_map == 1) {
             // center moving to left
-            swap_player_map(player, 0, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            swap_player_map(player, 0, 505, 256, 229, 80, 272, 172);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
         }
         else {
             // implied player->current_map == 2
             // right moving to center
-            swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            swap_player_map(player, 1, 502, 376, 226, 81, 272, 291);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
         }
     }
     else if (player->x > PLAYER_SWITCH_MAP_RIGHT) {
         if (player->current_map == 0) {
             // left moving to center
-            swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            swap_player_map(player, 1, 13, 170, 9, 79, 0, 87);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
         }
         else {
             // implied player->current_map == 1
             // center moving to right
-            swap_player_map(player, 2, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
+            swap_player_map(player, 2, 10, 249, 6, 79, 0, 166);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(16) | BG_8BPP | BG_REG_64x64;
         }
     }
