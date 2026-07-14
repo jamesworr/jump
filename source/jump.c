@@ -143,7 +143,7 @@ u8 check_player_wall_collision(player_t* player) {
     }
 }
 
-void swap_player_map(player_t* player, u8 new_map, u8 new_x, u8 new_y, u8 new_screen_x, u8 new_screen_y, u8 new_bg_horz, u8 new_bg_vert) {
+void swap_player_map(player_t* player, u8 new_map, u16 new_x, u16 new_y, u16 new_screen_x, u16 new_screen_y, u16 new_bg_horz, u16 new_bg_vert) {
     player->current_map = new_map;
     player->x = new_x;
     player->y = new_y;
