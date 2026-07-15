@@ -413,11 +413,11 @@ u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // Vertical
     // Check early bail out scenarios first
     // A > D
-    if (scorpion->y > (player->bg_horz + SCREEN_HEIGHT)) {
+    if (scorpion->y > (player->bg_vert + SCREEN_HEIGHT)) {
         set_scorpion_visibility(0);
         return 0;
     }
-    else if (scorpion->y >= player->bg_horz) {
+    else if (scorpion->y >= player->bg_vert) {
         // Check actual overlap
         // A >= C
         y_overlap = 1;
@@ -425,14 +425,14 @@ u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // B < C
     // TODO need to refactor the bail out logic but Im way too lazy and tired
     if (y_overlap == 0) {
-        if ((scorpion->y + SCORPION_HEIGHT) < player->bg_horz) {
+        if ((scorpion->y + SCORPION_HEIGHT) < player->bg_vert) {
             set_scorpion_visibility(0);
             return 0;
         }
         else { 
             // Check actual overlap
             // B <= D
-            if ((scorpion->y + SCORPION_HEIGHT) <= (player->bg_horz + SCREEN_HEIGHT)) {
+            if ((scorpion->y + SCORPION_HEIGHT) <= (player->bg_vert + SCREEN_HEIGHT)) {
                 y_overlap = 1;
             }
         }
