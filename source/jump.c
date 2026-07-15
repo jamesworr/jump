@@ -280,6 +280,81 @@ void update_player_position(player_t* player) {
     obj_set_pos(&obj_buffer[0], player->screen_x, player->screen_y);
 }
 
+// Returns wall collision status
+// 0x01: right
+// 0x02: left
+// 0x04: up
+// 0x08: down
+u8 check_player_scorpion_collision(player_t* player, scorpion_t* scorpion) {
+    // FIXME need to check the ordering on big vs small once final player sprite in place
+
+    // a = x min scorpion
+    // b = x max scorpion
+    // c = x min player
+    // d = x max player
+
+    volatile u8 x_overlap = 0;
+    volatile u8 y_overlap = 0;
+    // Check early bail out scenarios first
+    // A > D
+    if (scorpion->x > (player->x + PLAYER_WIDTH)) {
+        return 0;
+    }
+    else if (scorpion->x >= player->x) {
+        // Check actual overlap
+        // A >= C
+        x_overlap = 1;
+    }
+    // B < C
+    // TODO need to refactor the bail out logic but Im way too lazy and tired
+    if (x_overlap == 0) {
+        if ((scorpion->x + SCORPION_WIDTH) < player->x) {
+            return 0;
+        }
+        else { 
+            // Check actual overlap
+            // B <= D
+            if ((scorpion->x + SCORPION_WIDTH) <= (player->x + PLAYER_WIDTH)) {
+                x_overlap = 1;
+            }
+        }
+    }
+    if (x_overlap == 0) {
+        return 0;
+    }
+
+    // Vertical
+    // Check early bail out scenarios first
+    // A > D
+    if (scorpion->y > (player->y + SCREEN_HEIGHT)) {
+        return 0;
+    }
+    else if (scorpion->y >= player->y) {
+        // Check actual overlap
+        // A >= C
+        y_overlap = 1;
+    }
+    // B < C
+    // TODO need to refactor the bail out logic but Im way too lazy and tired
+    if (y_overlap == 0) {
+        if ((scorpion->y + SCORPION_HEIGHT) < player->y) {
+            return 0;
+        }
+        else { 
+            // Check actual overlap
+            // B <= D
+            if ((scorpion->y + SCORPION_HEIGHT) <= (player->y + SCREEN_HEIGHT)) {
+                y_overlap = 1;
+            }
+        }
+    }
+    if (y_overlap == 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
 void set_scorpion_visibility(u8 visible) {
     // TODO add pointer inside scorpion struct to the
     // OAM object buffer so this is reusable
@@ -371,7 +446,7 @@ u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     return 1;
 }
 
-void update_scorpion_position(player_t* player, scorpion_t* scorpion) {
+void update_scorpion_screen_position(player_t* player, scorpion_t* scorpion) {
     volatile short scorpion_offset_x = scorpion->x - player->x;
     volatile short scorpion_offset_y = scorpion->y - player->y;
 
@@ -421,6 +496,7 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
 
     volatile int frame_counter = 0;
     volatile u8 collision = 0;
+    volatile u8 scorpion_collision = 0;
 
     while(1) {
         vid_vsync();
@@ -434,7 +510,10 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         check_player_wall_collision(player);
 
         if (check_scorpion_visible(player, scorpion)) {
-            update_scorpion_position(player, scorpion);
+            // Only check collision when visible
+            scorpion_collision = check_player_scorpion_collision(player, scorpion);
+            // TODO move scorpion XY
+            update_scorpion_screen_position(player, scorpion);
         }
 
         // TODO fix off by one issue when changing direction
