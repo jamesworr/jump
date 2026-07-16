@@ -93,6 +93,11 @@ typedef struct {
     u8 screen_x;
     u8 screen_y;
 
+    // 0: left
+    // 1: center
+    // 2: right
+    u8 current_map;
+
     // Tile ID for sprite animation
     u8 tid;
 
@@ -377,6 +382,11 @@ u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
     // c = x min screen
     // d = x max screen
 
+    // Check if we're even in the same map room
+    if (scorpion->current_map != player->current_map) {
+        return 0;
+    }
+
     volatile u8 x_overlap = 0;
     volatile u8 y_overlap = 0;
     // Check early bail out scenarios first
@@ -482,12 +492,7 @@ void init_bg() {
 	// Load right map into SBB 16
 	memcpy32(&se_mem[16][0], right_house_map, right_house_map_len / sizeof(u32));
 
-    // TODO copy center and right
-    // TODO see if we can fit all 3 BG maps into separate SBB
-    // but keep common tileset
-
     // Setup background and display registers
-    // REG_BG0CNT = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64; FIXME
     REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
 }
 
@@ -544,6 +549,7 @@ int main() {
             .y = 20,
             .screen_x = 255,
             .screen_y = 0,
+            .current_map = 1, // TODO randomize
             .tid = SCORPION_TID
         };
 
