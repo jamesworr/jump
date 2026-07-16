@@ -44,8 +44,8 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define PLAYER_WIDTH  16
 #define PLAYER_TID    54
 
-#define PLAYER_SWITCH_MAP_LEFT    8
-#define PLAYER_SWITCH_MAP_RIGHT 505
+#define PLAYER_SWITCH_MAP_LEFT    7
+#define PLAYER_SWITCH_MAP_RIGHT 500
 
 #define SCORPION_HEIGHT 32
 #define SCORPION_WIDTH  16
@@ -109,50 +109,6 @@ typedef struct {
 // 0x02: left
 // 0x04: up
 // 0x08: down
-//u8 check_player_wall_collision(player_t* player) {
-//    // TODO
-//    // need to account for the weird 64x64 tile vram layout
-//    // OR just be lazy and have PIG generate a collision map
-//
-//    // quantize player location into 8x8 BG tiles
-//    volatile u8 upper_tile_x = (player->x) >> 3;
-//    volatile u8 upper_tile_y = (player->y) >> 3;
-//    volatile u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
-//    volatile u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
-//
-//    volatile u16 upper_tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
-//    volatile u16 lower_tile_map_offset = (lower_tile_y<<6)+lower_tile_x;
-//
-//    // TODO store pointer to current collision map in player struct
-//    // so we don't have to use the switch every time
-//    volatile u16 upper_tile_value;
-//    volatile u16 lower_tile_value;
-//    switch (player->current_map) {
-//        case 0:
-//            upper_tile_value = left_house_collision_map[upper_tile_map_offset];
-//            lower_tile_value = left_house_collision_map[lower_tile_map_offset];
-//            break;
-//        case 1:
-//            upper_tile_value = center_house_collision_map[upper_tile_map_offset];
-//            lower_tile_value = center_house_collision_map[lower_tile_map_offset];
-//            break;
-//        case 2:
-//            upper_tile_value = right_house_collision_map[upper_tile_map_offset];
-//            lower_tile_value = right_house_collision_map[lower_tile_map_offset];
-//            break;
-//    }
-//    volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
-//
-//    // TODO also need to check the 2nd tile
-//    if ((upper_tile_value == WALL_TID) || (lower_tile_value == WALL_TID)) {
-//    //if (upper_tile_value == WALL_TID) {
-//        return 1;
-//    }
-//    else {
-//        return 0;
-//    }
-//}
-
 u8 check_player_wall_collision(player_t* player) {
     // TODO
     // need to account for the weird 64x64 tile vram layout
@@ -215,13 +171,15 @@ void check_player_map_swap(player_t* player) {
     if (player->x < PLAYER_SWITCH_MAP_LEFT) {
         if (player->current_map == 1) {
             // center moving to left
-            swap_player_map(player, 0, 505, 256, 229, 80, 272, 172);
+            swap_player_map(player, 0, 497, 246, 221, 79, 272, 163);
+            //swap_player_map(player, 0, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(8) | BG_8BPP | BG_REG_64x64;
         }
         else {
             // implied player->current_map == 2
             // right moving to center
-            swap_player_map(player, 1, 502, 376, 226, 81, 272, 291);
+            swap_player_map(player, 1, 496, 364, 220, 81, 272, 279);
+            //swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
         }
     }
@@ -229,12 +187,15 @@ void check_player_map_swap(player_t* player) {
         if (player->current_map == 0) {
             // left moving to center
             swap_player_map(player, 1, 13, 170, 9, 79, 0, 87);
+            //swap_player_map(player, 1, 8, 157, 4, 79, 0, 74);
+            //swap_player_map(player, 1, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
         }
         else {
             // implied player->current_map == 1
             // center moving to right
-            swap_player_map(player, 2, 10, 249, 6, 79, 0, 166);
+            swap_player_map(player, 2, 8, 238, 4, 79, 0, 155);
+            //swap_player_map(player, 2, 256, 256, CENTER_X, CENTER_Y, BG_START_COORD_X, BG_START_COORD_Y);
             REG_BG0CNT = BG_CBB(0) | BG_SBB(16) | BG_8BPP | BG_REG_64x64;
         }
     }
