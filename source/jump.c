@@ -9,6 +9,7 @@
 #include "center_house.h"
 #include "right_house.h"
 #include "scorpion.h"
+#include "turby.h"
 
 OBJ_ATTR obj_buffer[128];
 OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
@@ -39,9 +40,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define CENTER_X 120
 #define CENTER_Y 80
 
-#define PLAYER_HEIGHT 16
-#define PLAYER_WIDTH   8
-#define PLAYER_TID     0
+#define PLAYER_HEIGHT 32
+#define PLAYER_WIDTH  16
+#define PLAYER_TID    54
 
 #define PLAYER_SWITCH_MAP_LEFT    8
 #define PLAYER_SWITCH_MAP_RIGHT 505
@@ -108,44 +109,95 @@ typedef struct {
 // 0x02: left
 // 0x04: up
 // 0x08: down
+//u8 check_player_wall_collision(player_t* player) {
+//    // TODO
+//    // need to account for the weird 64x64 tile vram layout
+//    // OR just be lazy and have PIG generate a collision map
+//
+//    // quantize player location into 8x8 BG tiles
+//    volatile u8 upper_tile_x = (player->x) >> 3;
+//    volatile u8 upper_tile_y = (player->y) >> 3;
+//    volatile u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
+//    volatile u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
+//
+//    volatile u16 upper_tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
+//    volatile u16 lower_tile_map_offset = (lower_tile_y<<6)+lower_tile_x;
+//
+//    // TODO store pointer to current collision map in player struct
+//    // so we don't have to use the switch every time
+//    volatile u16 upper_tile_value;
+//    volatile u16 lower_tile_value;
+//    switch (player->current_map) {
+//        case 0:
+//            upper_tile_value = left_house_collision_map[upper_tile_map_offset];
+//            lower_tile_value = left_house_collision_map[lower_tile_map_offset];
+//            break;
+//        case 1:
+//            upper_tile_value = center_house_collision_map[upper_tile_map_offset];
+//            lower_tile_value = center_house_collision_map[lower_tile_map_offset];
+//            break;
+//        case 2:
+//            upper_tile_value = right_house_collision_map[upper_tile_map_offset];
+//            lower_tile_value = right_house_collision_map[lower_tile_map_offset];
+//            break;
+//    }
+//    volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
+//
+//    // TODO also need to check the 2nd tile
+//    if ((upper_tile_value == WALL_TID) || (lower_tile_value == WALL_TID)) {
+//    //if (upper_tile_value == WALL_TID) {
+//        return 1;
+//    }
+//    else {
+//        return 0;
+//    }
+//}
+
 u8 check_player_wall_collision(player_t* player) {
     // TODO
     // need to account for the weird 64x64 tile vram layout
     // OR just be lazy and have PIG generate a collision map
-
-    // quantize player location into 8x8 BG tiles
-    u8 upper_tile_x = (player->x) >> 3;
-    u8 upper_tile_y = (player->y) >> 3;
-    u8 lower_tile_x = (player->x + PLAYER_WIDTH ) >> 3;
-    u8 lower_tile_y = (player->y + PLAYER_HEIGHT) >> 3;
-
-    volatile u16 tile_map_offset = (upper_tile_y<<6)+upper_tile_x;
-    //volatile u16 tile_value = left_house_collision_map[tile_map_offset];
-    //volatile u16 tile_value = center_house_collision_map[tile_map_offset];
-
-    // TODO store pointer to current collision map in player struct
-    // so we don't have to use the switch every time
-    volatile u16 tile_value;
+    const unsigned short* collision_map;
     switch (player->current_map) {
         case 0:
-            tile_value = left_house_collision_map[tile_map_offset];
+            collision_map = left_house_collision_map;
             break;
         case 1:
-            tile_value = center_house_collision_map[tile_map_offset];
+            collision_map = center_house_collision_map;
             break;
         case 2:
-            tile_value = right_house_collision_map[tile_map_offset];
+            collision_map = right_house_collision_map;
             break;
     }
-    volatile u16 tile_value3 = left_house_collision_map[0]; // TODO delete me placeholder for breakpoint
 
-    // TODO also need to check the 2nd tile
+    // quantize player location into 8x8 BG tiles
+    volatile u8 tile_x = (player->x) >> 3;
+    volatile u8 tile_y = (player->y) >> 3;
+
+    volatile u16 tile_value; // TODO get rid of me and put the collision_map[] into if()
+    volatile u16 tile_offset;
+    tile_offset = (tile_y<<6)+tile_x;
+    tile_value = collision_map[tile_offset];
     if (tile_value == WALL_TID) {
         return 1;
     }
-    else {
-        return 0;
+    tile_offset = ((tile_y+3)<<6)+tile_x;
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 1;
     }
+    tile_offset = (tile_y<<6)+(tile_x+1);
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 1;
+    }
+    tile_offset = ((tile_y+3)<<6)+(tile_x+1);
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 1;
+    }
+
+    return 0;
 }
 
 void swap_player_map(player_t* player, u8 new_map, u16 new_x, u16 new_y, u16 new_screen_x, u16 new_screen_y, u16 new_bg_horz, u16 new_bg_vert) {
@@ -524,6 +576,16 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         // TODO fix off by one issue when changing direction
         update_player_position(player);
 
+        // TODO delete me
+        //if (key_hit(KEY_R)) {
+        //    u16 temp1 = obj_buffer[0].attr2;
+        //    u16 temp2 = obj_buffer[0].attr2++;
+        //    obj_buffer[0].attr2 = obj_buffer[0].attr2++;
+        //}
+        //else if (key_hit(KEY_L)) {
+        //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
+        //}
+
         oam_copy(oam_mem, obj_buffer, 2);
         frame_counter++;
     }
@@ -563,6 +625,7 @@ int main() {
         // Copy sprite tiles
         memcpy32(&tile_mem[4][0], man_tiles, man_tiles_len / sizeof(u32));
         memcpy32(&tile_mem[4][4], scorpion_tiles, scorpion_tiles_len / sizeof(u32));
+        memcpy32(&tile_mem[4][54], turby_tiles, turby_tiles_len / sizeof(u32));
 
         // Copy shared sprite palette
         memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
@@ -570,7 +633,7 @@ int main() {
         // Initialize the person
         obj_set_attr(&obj_buffer[0],
             ATTR0_TALL | ATTR0_8BPP,
-            ATTR1_SIZE_8x16,
+            ATTR1_SIZE_16x32,
             ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
         //obj_set_pos(&obj_buffer[0], 100, 100);
