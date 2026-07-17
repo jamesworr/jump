@@ -43,6 +43,9 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define PLAYER_HEIGHT 32
 #define PLAYER_WIDTH  16
 #define PLAYER_TID    54
+#define WALK_1_TID    70
+#define WALK_2_TID    86
+#define PLAYER_PUNCH 118
 
 #define PLAYER_SWITCH_MAP_LEFT    7
 #define PLAYER_SWITCH_MAP_RIGHT 500
@@ -537,12 +540,14 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         // TODO fix off by one issue when changing direction
         update_player_position(player);
 
-        // TODO delete me
-        //if (key_hit(KEY_R)) {
-        //    u16 temp1 = obj_buffer[0].attr2;
-        //    u16 temp2 = obj_buffer[0].attr2++;
-        //    obj_buffer[0].attr2 = obj_buffer[0].attr2++;
-        //}
+        // TODO move 
+        if (key_is_down(KEY_R)) {
+            obj_buffer[0].attr2 = PLAYER_PUNCH;
+        }
+        else {
+            obj_buffer[0].attr2 = PLAYER_TID;
+        }
+
         //else if (key_hit(KEY_L)) {
         //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
         //}
