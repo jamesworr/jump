@@ -561,6 +561,7 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
     volatile u8 collision = 0;
     volatile u8 scorpion_collision = 0;
     volatile u8 walking = 0;
+    volatile unsigned int rotation = 0;
 
     while(1) {
         vid_vsync();
@@ -583,6 +584,20 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         // TODO fix off by one issue when changing direction
         walking = update_player_position(player);
         player_animation(player, walking, &frame_counter);
+
+        // TODO delete me
+        //if (key_hit(KEY_R)) {
+        //    u16 temp1 = obj_buffer[0].attr2;
+        //    u16 temp2 = obj_buffer[0].attr2++;
+        //    obj_buffer[0].attr2 = obj_buffer[0].attr2++;
+        //}
+        //else if (key_hit(KEY_L)) {
+        //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
+        //}
+        if (key_is_down(KEY_R)) {
+            rotation += 100;
+            obj_aff_rotate(&obj_aff_buffer[0], rotation);
+        }
 
         oam_copy(oam_mem, obj_buffer, 2);
         frame_counter++;
@@ -630,10 +645,25 @@ int main() {
 
         // Initialize the person
         obj_set_attr(&obj_buffer[0],
-            ATTR0_TALL | ATTR0_8BPP,
-            ATTR1_SIZE_16x32,
+            ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF,
+            ATTR1_SIZE_16x32 | ATTR1_AFF_ID(0),
             ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
+        obj_aff_buffer[0].pa = 0x0000;
+        obj_aff_buffer[0].pb = 0xFF00;
+        obj_aff_buffer[0].pc = 0x0100;
+        obj_aff_buffer[0].pd = 0x0000;
+
+        obj_aff_buffer[0].pa = 0x0000;
+        obj_aff_buffer[0].pb = 0x0100;
+        obj_aff_buffer[0].pc = 0xFF00;
+        obj_aff_buffer[0].pd = 0x0000;
+
+        //obj_aff_buffer[0].pa = 0xFF00;
+        //obj_aff_buffer[0].pb = 0x0000;
+        //obj_aff_buffer[0].pc = 0x0000;
+        //obj_aff_buffer[0].pd = 0xFF00;
+        //obj_aff_identity(&obj_aff_buffer[0]);
         //obj_set_pos(&obj_buffer[0], 100, 100);
 
         // Initialize the scorpion
