@@ -524,6 +524,37 @@ void init_bg() {
     REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
 }
 
+void update_player_direction(void) {
+    if (key_is_down(KEY_UP))  {
+        if (key_is_down(KEY_RIGHT)) {
+            obj_aff_set(&obj_aff_buffer[0], 160, 200, -200, 160);
+        }
+        else if (key_is_down(KEY_LEFT)) {
+            obj_aff_set(&obj_aff_buffer[0], 160, -200, 200, 160);
+        }
+        else {
+            obj_aff_identity(&obj_aff_buffer[0]);
+        }
+    }
+    else if (key_is_down(KEY_DOWN))  {
+        if (key_is_down(KEY_RIGHT)) {
+            obj_aff_set(&obj_aff_buffer[0], -160, 200, -200, -160);
+        }
+        else if (key_is_down(KEY_LEFT)) {
+            obj_aff_set(&obj_aff_buffer[0], -160, -200, 200, -160);
+        }
+        else {
+            obj_aff_set(&obj_aff_buffer[0], -256, 0, 0, -256);
+        }
+    }
+    else if (key_is_down(KEY_RIGHT))  {
+        obj_aff_set(&obj_aff_buffer[0], 0, 256, -256, 0);
+    }
+    else if (key_is_down(KEY_LEFT))  {
+        obj_aff_set(&obj_aff_buffer[0], 0, -256, 256, 0);
+    }
+}
+
 void player_animation(player_t* player, u8 walking, unsigned int* frame_counter) {
     if (key_is_down(KEY_R)) {
         obj_buffer[0].attr2 = PLAYER_PUNCH;
@@ -583,6 +614,7 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
 
         // TODO fix off by one issue when changing direction
         walking = update_player_position(player);
+        update_player_direction();
         player_animation(player, walking, &frame_counter);
 
         // TODO delete me
@@ -594,12 +626,13 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         //else if (key_hit(KEY_L)) {
         //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
         //}
-        if (key_is_down(KEY_R)) {
-            rotation += 100;
-            obj_aff_rotate(&obj_aff_buffer[0], rotation);
-        }
+        //if (key_is_down(KEY_R)) {
+        //    rotation += 100;
+        //    obj_aff_rotate(&obj_aff_buffer[0], rotation);
+        //}
 
         oam_copy(oam_mem, obj_buffer, 2);
+		obj_aff_copy(obj_aff_mem, obj_aff_buffer, 1);
         frame_counter++;
     }
 }
@@ -645,25 +678,11 @@ int main() {
 
         // Initialize the person
         obj_set_attr(&obj_buffer[0],
-            ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF,
+            ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF_DBL,
             ATTR1_SIZE_16x32 | ATTR1_AFF_ID(0),
             ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
-        obj_aff_buffer[0].pa = 0x0000;
-        obj_aff_buffer[0].pb = 0xFF00;
-        obj_aff_buffer[0].pc = 0x0100;
-        obj_aff_buffer[0].pd = 0x0000;
-
-        obj_aff_buffer[0].pa = 0x0000;
-        obj_aff_buffer[0].pb = 0x0100;
-        obj_aff_buffer[0].pc = 0xFF00;
-        obj_aff_buffer[0].pd = 0x0000;
-
-        //obj_aff_buffer[0].pa = 0xFF00;
-        //obj_aff_buffer[0].pb = 0x0000;
-        //obj_aff_buffer[0].pc = 0x0000;
-        //obj_aff_buffer[0].pd = 0xFF00;
-        //obj_aff_identity(&obj_aff_buffer[0]);
+        obj_aff_identity(&obj_aff_buffer[0]);
         //obj_set_pos(&obj_buffer[0], 100, 100);
 
         // Initialize the scorpion
