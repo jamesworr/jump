@@ -204,11 +204,14 @@ void check_player_map_swap(player_t* player) {
     }
 }
 
-void update_player_position(player_t* player) {
+u8 update_player_position(player_t* player) {
+    // return moving state
+    u8 walking = 0;
     // Moving up
     if (key_is_down(KEY_UP) && ((player->bg_vert <= BG_SCROLL_X_LOWER) || (player->screen_y >= CENTER_Y))) {
         player->screen_y--;
         player->y--;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -219,6 +222,7 @@ void update_player_position(player_t* player) {
     else if (key_is_down(KEY_UP) && (player->bg_vert >= BG_SCROLL_X_LOWER)) {
         player->bg_vert--;
         player->y--;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -231,6 +235,7 @@ void update_player_position(player_t* player) {
     if (key_is_down(KEY_DOWN) && ((player->bg_vert >= BG_SCROLL_X_UPPER) || (player->screen_y <= CENTER_Y))) {
         player->screen_y++;
         player->y++;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -241,6 +246,7 @@ void update_player_position(player_t* player) {
     else if (key_is_down(KEY_DOWN) && (player->bg_vert <= BG_SCROLL_X_UPPER)) {
         player->bg_vert++;
         player->y++;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -253,6 +259,7 @@ void update_player_position(player_t* player) {
     if (key_is_down(KEY_LEFT) && ((player->bg_horz <= BG_SCROLL_Y_LOWER) || (player->screen_x >= CENTER_X))) {
         player->screen_x--;
         player->x--;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -263,6 +270,7 @@ void update_player_position(player_t* player) {
     else if (key_is_down(KEY_LEFT) && (player->bg_horz >= BG_SCROLL_Y_LOWER)) {
         player->bg_horz--;
         player->x--;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -275,6 +283,7 @@ void update_player_position(player_t* player) {
     if (key_is_down(KEY_RIGHT) && ((player->bg_horz >= BG_SCROLL_Y_UPPER) || (player->screen_x <= CENTER_X))) {
         player->screen_x++;
         player->x++;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -285,6 +294,7 @@ void update_player_position(player_t* player) {
     else if (key_is_down(KEY_RIGHT) && (player->bg_horz <= BG_SCROLL_Y_UPPER)) {
         player->bg_horz++;
         player->x++;
+        walking = 1;
         // Check collison on new move TODO find better way
         if (check_player_wall_collision(player) == 1) {
             // revert
@@ -299,6 +309,8 @@ void update_player_position(player_t* player) {
     REG_BG0VOFS = player->bg_vert;
 
     obj_set_pos(&obj_buffer[0], player->screen_x, player->screen_y);
+
+    return walking;
 }
 
 // Returns wall collision status
@@ -512,12 +524,43 @@ void init_bg() {
     REG_BG0CNT = BG_CBB(0) | BG_SBB(12) | BG_8BPP | BG_REG_64x64;
 }
 
+void player_animation(player_t* player, u8 walking, unsigned int* frame_counter) {
+    if (key_is_down(KEY_R)) {
+        obj_buffer[0].attr2 = PLAYER_PUNCH;
+    }
+    else if (walking == 1) {
+        if (*frame_counter > 15) {
+            *frame_counter = 0;
+            player->tid++;
+            player->tid %= 4;
+        }
+        switch (player->tid) {
+            case 0:
+                obj_buffer[0].attr2 = PLAYER_TID;
+                break;
+            case 1:
+                obj_buffer[0].attr2 = WALK_1_TID;
+                break;
+            case 2:
+                obj_buffer[0].attr2 = PLAYER_TID;
+                break;
+            case 3:
+                obj_buffer[0].attr2 = WALK_2_TID;
+                break;
+        }
+    }
+    else {
+        obj_buffer[0].attr2 = PLAYER_TID;
+    }
+}
+
 void sprite_loop(player_t* player, scorpion_t* scorpion) {
     OBJ_ATTR *block_obj;
 
-    volatile int frame_counter = 0;
+    volatile unsigned int frame_counter = 0;
     volatile u8 collision = 0;
     volatile u8 scorpion_collision = 0;
+    volatile u8 walking = 0;
 
     while(1) {
         vid_vsync();
@@ -538,19 +581,8 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         }
 
         // TODO fix off by one issue when changing direction
-        update_player_position(player);
-
-        // TODO move 
-        if (key_is_down(KEY_R)) {
-            obj_buffer[0].attr2 = PLAYER_PUNCH;
-        }
-        else {
-            obj_buffer[0].attr2 = PLAYER_TID;
-        }
-
-        //else if (key_hit(KEY_L)) {
-        //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
-        //}
+        walking = update_player_position(player);
+        player_animation(player, walking, &frame_counter);
 
         oam_copy(oam_mem, obj_buffer, 2);
         frame_counter++;
