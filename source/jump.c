@@ -47,7 +47,7 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 #define WALK_2_TID   100
 #define PLAYER_PUNCH 132
 
-#define PLAYER_SWITCH_MAP_LEFT    7
+#define PLAYER_SWITCH_MAP_LEFT    8
 #define PLAYER_SWITCH_MAP_RIGHT 500
 
 #define SCORPION_HEIGHT  32
@@ -116,9 +116,6 @@ typedef struct {
 // 0x04: up
 // 0x08: down
 u8 check_player_wall_collision(player_t* player) {
-    // TODO
-    // need to account for the weird 64x64 tile vram layout
-    // OR just be lazy and have PIG generate a collision map
     const unsigned short* collision_map;
     switch (player->current_map) {
         case 0:
@@ -172,7 +169,6 @@ void swap_player_map(player_t* player, u8 new_map, u16 new_x, u16 new_y, u16 new
     player->bg_vert = new_bg_vert;
 }
 
-// FIXME move the bg control reg update into swap_player_map
 void check_player_map_swap(player_t* player) {
     if (player->x < PLAYER_SWITCH_MAP_LEFT) {
         if (player->current_map == 1) {
@@ -322,8 +318,6 @@ u8 update_player_position(player_t* player) {
 // 0x04: up
 // 0x08: down
 u8 check_player_scorpion_collision(player_t* player, scorpion_t* scorpion) {
-    // FIXME need to check the ordering on big vs small once final player sprite in place
-
     // a = x min scorpion
     // b = x max scorpion
     // c = x min player
@@ -392,8 +386,6 @@ u8 check_player_scorpion_collision(player_t* player, scorpion_t* scorpion) {
 }
 
 void set_scorpion_visibility(u8 visible) {
-    // TODO add pointer inside scorpion struct to the
-    // OAM object buffer so this is reusable
     if (visible == 1) {
         obj_buffer[1].attr0 = (obj_buffer[0].attr0 & 0xFCFF) | ATTR0_AFF_DBL;
     }
@@ -498,9 +490,6 @@ void update_scorpion_screen_position(player_t* player, scorpion_t* scorpion) {
     obj_set_pos(&obj_buffer[1], scorpion_screen_x, scorpion_screen_y);
 }
 
-//BG_POINT bg0_pt= { 0, 0 };
-//SCR_ENTRY *bg0_map= se_mem[SBB_0];
-
 void wait_any_key(void) {
     while(1) {
         vid_vsync();
@@ -529,6 +518,7 @@ void init_bg() {
 }
 
 void update_player_direction(void) {
+    // Pre-calculated LUTs for affine rotations
     if (key_is_down(KEY_UP))  {
         if (key_is_down(KEY_RIGHT)) {
             obj_aff_set(&obj_aff_buffer[0], 160, 200, -200, 160);
@@ -561,12 +551,17 @@ void update_player_direction(void) {
 
 void player_animation(player_t* player, u8 walking, unsigned int* frame_counter, u8 collision) {
     if (key_is_down(KEY_R)) {
+        // Turby punching animation
         obj_buffer[0].attr2 = PLAYER_PUNCH;
         if (collision) {
+            // Make scorpion red on contact
+            // I know this would be cheaper with palette swapping but I'm lazy
             obj_buffer[1].attr2 = SCORPION_RED_TID;
         }
     }
     else if (walking == 1) {
+        // Cycle through walking animation frames on counter
+        // 15 frames should be 4Hz
         if (*frame_counter > 15) {
             *frame_counter = 0;
             player->tid++;
@@ -586,8 +581,10 @@ void player_animation(player_t* player, u8 walking, unsigned int* frame_counter,
                 obj_buffer[0].attr2 = WALK_2_TID;
                 break;
         }
+        obj_buffer[1].attr2 = SCORPION_TID;
     }
     else {
+        // reset to default frames
         obj_buffer[0].attr2 = PLAYER_TID;
         obj_buffer[1].attr2 = SCORPION_TID;
     }
@@ -602,6 +599,11 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
     volatile u8 walking = 0;
     volatile unsigned int rotation = 0;
 
+    // Open Items
+    // TODO move scorpion XY
+    // TODO fix off by one issue when changing direction
+    // TODO fix janky door crossing with affine
+
     while(1) {
         vid_vsync();
         key_poll();
@@ -610,34 +612,17 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         }
         // Game Loop
         // Check collision
-        // TODO
         check_player_wall_collision(player);
 
         if (check_scorpion_visible(player, scorpion)) {
             // Only check collision when visible
             scorpion_collision = check_player_scorpion_collision(player, scorpion);
-            // TODO move scorpion XY
             update_scorpion_screen_position(player, scorpion);
         }
 
-        // TODO fix off by one issue when changing direction
         walking = update_player_position(player);
         update_player_direction();
         player_animation(player, walking, &frame_counter, scorpion_collision);
-
-        // TODO delete me
-        //if (key_hit(KEY_R)) {
-        //    u16 temp1 = obj_buffer[0].attr2;
-        //    u16 temp2 = obj_buffer[0].attr2++;
-        //    obj_buffer[0].attr2 = obj_buffer[0].attr2++;
-        //}
-        //else if (key_hit(KEY_L)) {
-        //    obj_buffer[0].attr2 = obj_buffer[0].attr2--;
-        //}
-        //if (key_is_down(KEY_R)) {
-        //    rotation += 100;
-        //    obj_aff_rotate(&obj_aff_buffer[0], rotation);
-        //}
 
         oam_copy(oam_mem, obj_buffer, 2);
 		obj_aff_copy(obj_aff_mem, obj_aff_buffer, 2);
@@ -648,7 +633,6 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
 int main() {
     while(1) {
         // Init player struct
-        // TODO have init locations per room
         volatile player_t player = {
             .x = 256,
             .y = 256,
@@ -672,8 +656,6 @@ int main() {
         //opening_sequence();
         init_bg();
 
-        // TODO move into separate init function
-        //oam_init(obj_buffer, 128);
         oam_init(obj_buffer, 128);
 
         // Copy sprite tiles
@@ -682,7 +664,6 @@ int main() {
         memcpy32(&tile_mem[4][68], turby_tiles, turby_tiles_len / sizeof(u32));
 
         // Copy shared sprite palette
-        //memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
         memcpy16(pal_obj_mem, scorpion_pal, scorpion_pal_len / sizeof(u16));
 
         // Initialize the person
@@ -690,28 +671,17 @@ int main() {
             ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF_DBL,
             ATTR1_SIZE_16x32 | ATTR1_AFF_ID(0),
             ATTR2_PALBANK(0) | PLAYER_TID);
-        //obj_set_attr(&obj_buffer[0],
-        //    ATTR0_TALL | ATTR0_8BPP,
-        //    ATTR1_SIZE_16x32,
-        //    ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
         obj_aff_identity(&obj_aff_buffer[0]);
-        //obj_set_pos(&obj_buffer[0], 100, 100);
 
         // Initialize the scorpion
-        // TODO make this a loop for multiple
         obj_set_attr(&obj_buffer[1],
             ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF_DBL,
             ATTR1_SIZE_16x32 | ATTR1_AFF_ID(1),
             ATTR2_PALBANK(0) | SCORPION_TID);
-        //obj_set_attr(&obj_buffer[1],
-        //    ATTR0_TALL | ATTR0_8BPP,
-        //    ATTR1_SIZE_16x32,
-        //    ATTR2_PALBANK(0) | SCORPION_TID);
         obj_set_pos(&obj_buffer[1], scorpion.screen_x,scorpion.screen_y);
         obj_aff_identity(&obj_aff_buffer[1]);
         set_scorpion_visibility(0);
-        //obj_set_pos(&obj_buffer[1], 100, 100);
 
         REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_OBJ | DCNT_OBJ_1D;
 
