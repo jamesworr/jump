@@ -392,10 +392,10 @@ void set_scorpion_visibility(u8 visible) {
     // TODO add pointer inside scorpion struct to the
     // OAM object buffer so this is reusable
     if (visible == 1) {
-        obj_buffer[1].attr0 = obj_buffer[0].attr0 & 0xFCFF;
+        obj_buffer[1].attr0 = (obj_buffer[0].attr0 & 0xFCFF) | ATTR0_AFF_DBL;
     }
     else {
-        obj_buffer[1].attr0 = obj_buffer[0].attr0 | ATTR0_HIDE;
+        obj_buffer[1].attr0 = (obj_buffer[0].attr0 & 0xFCFF) | ATTR0_HIDE;
     }
 }
 
@@ -412,6 +412,7 @@ u8 check_scorpion_visible(player_t* player, scorpion_t* scorpion) {
 
     // Check if we're even in the same map room
     if (scorpion->current_map != player->current_map) {
+        set_scorpion_visibility(0);
         return 0;
     }
 
@@ -632,7 +633,7 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         //}
 
         oam_copy(oam_mem, obj_buffer, 2);
-		obj_aff_copy(obj_aff_mem, obj_aff_buffer, 1);
+		obj_aff_copy(obj_aff_mem, obj_aff_buffer, 2);
         frame_counter++;
     }
 }
@@ -681,6 +682,10 @@ int main() {
             ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF_DBL,
             ATTR1_SIZE_16x32 | ATTR1_AFF_ID(0),
             ATTR2_PALBANK(0) | PLAYER_TID);
+        //obj_set_attr(&obj_buffer[0],
+        //    ATTR0_TALL | ATTR0_8BPP,
+        //    ATTR1_SIZE_16x32,
+        //    ATTR2_PALBANK(0) | PLAYER_TID);
         obj_set_pos(&obj_buffer[0], player.screen_x, player.screen_y);
         obj_aff_identity(&obj_aff_buffer[0]);
         //obj_set_pos(&obj_buffer[0], 100, 100);
@@ -688,10 +693,15 @@ int main() {
         // Initialize the scorpion
         // TODO make this a loop for multiple
         obj_set_attr(&obj_buffer[1],
-            ATTR0_TALL | ATTR0_8BPP,
-            ATTR1_SIZE_16x32,
+            ATTR0_TALL | ATTR0_8BPP | ATTR0_AFF_DBL,
+            ATTR1_SIZE_16x32 | ATTR1_AFF_ID(1),
             ATTR2_PALBANK(0) | SCORPION_TID);
+        //obj_set_attr(&obj_buffer[1],
+        //    ATTR0_TALL | ATTR0_8BPP,
+        //    ATTR1_SIZE_16x32,
+        //    ATTR2_PALBANK(0) | SCORPION_TID);
         obj_set_pos(&obj_buffer[1], scorpion.screen_x,scorpion.screen_y);
+        obj_aff_identity(&obj_aff_buffer[1]);
         set_scorpion_visibility(0);
         //obj_set_pos(&obj_buffer[1], 100, 100);
 
