@@ -42,17 +42,20 @@ OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;
 
 #define PLAYER_HEIGHT 32
 #define PLAYER_WIDTH  16
-#define PLAYER_TID    54
-#define WALK_1_TID    70
-#define WALK_2_TID    86
-#define PLAYER_PUNCH 118
+#define PLAYER_TID    68
+#define WALK_1_TID    84
+#define WALK_2_TID   100
+#define PLAYER_PUNCH 132
 
 #define PLAYER_SWITCH_MAP_LEFT    7
 #define PLAYER_SWITCH_MAP_RIGHT 500
 
-#define SCORPION_HEIGHT 32
-#define SCORPION_WIDTH  16
-#define SCORPION_TID     4
+#define SCORPION_HEIGHT  32
+#define SCORPION_WIDTH   16
+#define SCORPION_TID      4
+#define CLAW_LEFT_TID    10
+#define CLAW_RIGHT_TID   36
+#define SCORPION_RED_TID 52
 
 // Collision stuff
 #define WALL_TID 0
@@ -556,9 +559,12 @@ void update_player_direction(void) {
     }
 }
 
-void player_animation(player_t* player, u8 walking, unsigned int* frame_counter) {
+void player_animation(player_t* player, u8 walking, unsigned int* frame_counter, u8 collision) {
     if (key_is_down(KEY_R)) {
         obj_buffer[0].attr2 = PLAYER_PUNCH;
+        if (collision) {
+            obj_buffer[1].attr2 = SCORPION_RED_TID;
+        }
     }
     else if (walking == 1) {
         if (*frame_counter > 15) {
@@ -583,6 +589,7 @@ void player_animation(player_t* player, u8 walking, unsigned int* frame_counter)
     }
     else {
         obj_buffer[0].attr2 = PLAYER_TID;
+        obj_buffer[1].attr2 = SCORPION_TID;
     }
 }
 
@@ -616,7 +623,7 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         // TODO fix off by one issue when changing direction
         walking = update_player_position(player);
         update_player_direction();
-        player_animation(player, walking, &frame_counter);
+        player_animation(player, walking, &frame_counter, scorpion_collision);
 
         // TODO delete me
         //if (key_hit(KEY_R)) {
@@ -672,10 +679,11 @@ int main() {
         // Copy sprite tiles
         memcpy32(&tile_mem[4][0], man_tiles, man_tiles_len / sizeof(u32));
         memcpy32(&tile_mem[4][4], scorpion_tiles, scorpion_tiles_len / sizeof(u32));
-        memcpy32(&tile_mem[4][54], turby_tiles, turby_tiles_len / sizeof(u32));
+        memcpy32(&tile_mem[4][68], turby_tiles, turby_tiles_len / sizeof(u32));
 
         // Copy shared sprite palette
-        memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
+        //memcpy16(pal_obj_mem, man_pal, man_pal_len / sizeof(u16));
+        memcpy16(pal_obj_mem, scorpion_pal, scorpion_pal_len / sizeof(u16));
 
         // Initialize the person
         obj_set_attr(&obj_buffer[0],
