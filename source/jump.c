@@ -91,8 +91,10 @@ typedef struct {
 // scorpion object
 typedef struct {
     // absolute position within the current map
-    u16 x;
-    u16 y;
+    //u16 x;
+    //u16 y;
+    short x;
+    short y;
 
     // relative position within the screen
     // x = 255 means outsode current screen
@@ -107,6 +109,10 @@ typedef struct {
 
     // Tile ID for sprite animation
     u8 tid;
+
+    // Movement directions
+    short move_x;
+    short move_y;
 
 } scorpion_t;
 
@@ -157,6 +163,87 @@ u8 check_player_wall_collision(player_t* player) {
     }
 
     return 0;
+}
+
+// Returns wall collision status
+// 0x01: right
+// 0x02: left
+// 0x04: up
+// 0x08: down
+// FIXME make this shared with player but I'm out of time
+u8 check_scorpion_wall_collision(scorpion_t* scorpion) {
+    const unsigned short* collision_map = center_house_collision_map;
+    /*
+    switch (scorpion->current_map) {
+        case 0:
+            collision_map = left_house_collision_map;
+            break;
+        case 1:
+            collision_map = center_house_collision_map;
+            break;
+        case 2:
+            collision_map = right_house_collision_map;
+            break;
+    }
+    */
+
+    // quantize scorpion location into 8x8 BG tiles
+    volatile u8 tile_x = (scorpion->x) >> 3;
+    volatile u8 tile_y = (scorpion->y) >> 3;
+
+    volatile u16 tile_value; // TODO get rid of me and put the collision_map[] into if()
+    volatile u16 tile_offset;
+    tile_offset = (tile_y<<6)+tile_x;
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 1;
+    }
+    tile_offset = ((tile_y+3)<<6)+tile_x;
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 2;
+    }
+    tile_offset = (tile_y<<6)+(tile_x+1);
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 3;
+    }
+    tile_offset = ((tile_y+3)<<6)+(tile_x+1);
+    tile_value = collision_map[tile_offset];
+    if (tile_value == WALL_TID) {
+        return 4;
+    }
+
+    return 0;
+}
+
+u8 update_scorpion_position(scorpion_t* scorpion) {
+    scorpion->x += scorpion->move_x;
+    scorpion->y += scorpion->move_y;
+    volatile u8 collision_side = check_scorpion_wall_collision(scorpion);
+    if (collision_side) {
+        // revert move and change direction on collision
+        scorpion->x -= scorpion->move_x;
+        scorpion->y -= scorpion->move_x;
+        switch (collision_side) {
+            case 1:
+                scorpion->move_x =  0;
+                scorpion->move_y =  1;
+                break;
+            case 2:
+                scorpion->move_x =  0;
+                scorpion->move_y = -1;
+                break;
+            case 3:
+                scorpion->move_x =  0;
+                scorpion->move_y =  1;
+                break;
+            case 4:
+                scorpion->move_x =  0;
+                scorpion->move_y = -1;
+                break;
+        }
+    }
 }
 
 void swap_player_map(player_t* player, u8 new_map, u16 new_x, u16 new_y, u16 new_screen_x, u16 new_screen_y, u16 new_bg_horz, u16 new_bg_vert) {
@@ -614,6 +701,9 @@ void sprite_loop(player_t* player, scorpion_t* scorpion) {
         // Check collision
         check_player_wall_collision(player);
 
+        if (frame_counter & 0x01) {
+            update_scorpion_position(scorpion);
+        }
         if (check_scorpion_visible(player, scorpion)) {
             // Only check collision when visible
             scorpion_collision = check_player_scorpion_collision(player, scorpion);
@@ -650,7 +740,9 @@ int main() {
             .screen_x = 255,
             .screen_y = 0,
             .current_map = 1, // TODO randomize
-            .tid = SCORPION_TID
+            .tid = SCORPION_TID,
+            .move_x =  0,
+            .move_y = -1
         };
 
         //opening_sequence();
